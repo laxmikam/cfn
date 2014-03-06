@@ -10,27 +10,28 @@
             "Default": "oregon"
         },
 
-        "vpcId" : {
-            "Description" : "VPC-ID",
-            "Type" : "String" ,
-            "Default": "vpc-e74ed88f"
-        },
 
         "subnetId" : {
             "Description" : "Subnet-ID",
             "Type" : "String" ,
-            "Default":"subnet-da929fae"
+            "Default":"subnet-a8b555c7"
         },        
+
+         "instanceRole" : {
+            "Description" : "Instance Role",
+            "Type" : "String" ,
+            "Default":"instance-role"
+        },
 
         "securityGroupIds" : {
             "Description" : "Security Groups",
             "Type" : "String", 
-            "Default" : "sg-7a76801f"
+            "Default" : "sg-2520e740,sg-60e52b05"
         },
 
         "InstanceType" : {
             "Type" : "String", 
-            "Default" : "t1.micro", 
+            "Default" : "m1.small", 
             "AllowedValues" : [ "t1.micro", "m1.small" , "m1.medium" , "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "c1.xlarge", "cc1.4xlarge", "cc2.8xlarge", "cr1.8xlarge" ],
             "Description" : "EC2 instance type (e.g. m1.large, m1.xlarge, m2.xlarge)"
         },
@@ -117,9 +118,14 @@
                 "ImageId" : { "Fn::FindInMap" : [ "RegionImageZone", { "Ref" : "AWS::Region" }, 
                     { "Fn::FindInMap" : [ "InstanceTypeArch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
                 "SubnetId" : { "Ref" : "subnetId" },    
-                "SecurityGroupIds" : [ { "Ref" : "securityGroupIds" } ],
+                "SecurityGroupIds" : [ "sg-2520e740", "sg-60e52b05"],
                 "KeyName" : { "Ref" : "KeyName" } ,
-                                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                "Tags": [ { "Key": "Name" , "Value": "diao-innovation-catalog-db1" } ,
+                          { "Key": "Environment" , "Value": "Test" } ,
+                          { "Key": "Costcenter" , "Value": "10004416" } ,
+                          { "Key": "Application" , "Value": "diaoic" } ,
+                          { "Key": "Division" , "Value": "Digital Innovation and Outreach" } ] ,
+                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
                     "#!/bin/bash\n",
                     "echo \"[10gen]\" > /etc/yum.repos.d/10gen.repo \n",
                     "echo \"name=10gen Repository\" >> /etc/yum.repos.d/10gen.repo \n",
@@ -130,7 +136,7 @@
 
                     "## Initialize CloudFormation bits\n",
                     "/opt/aws/bin/cfn-init -v -s ", { "Ref" : "AWS::StackName" }, " -r ReplicaSetMemberInstance",
-                    "   --role= ",  "readonly" ,
+                    "   --role= ",  { "Ref" : "instanceRole" } ,
                     "   --region ", { "Ref" : "AWS::Region" }, " > /tmp/cfn-init.log \n",
 
                     "## Waiting for EBS mounts to become available\n",

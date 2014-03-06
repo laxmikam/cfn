@@ -10,10 +10,10 @@
             "Default": "oregon"
         },
 
-        "iamInstanceProfile" : {
-        "Description" : "Name of an instance role to assign to EC2",
-        "Type" : "String" ,
-        "Default": "readonly"
+        "instanceRole" : {
+            "Description" : "Instance Role",
+            "Type" : "String" ,
+            "Default":"instance-role"
         },
 
 
@@ -27,20 +27,20 @@
         "subnetId" : {
             "Description" : "Subnet-ID",
             "Type" : "String" ,
-            "Default":"subnet-da929fae"
+            "Default":"subnet-a8b555c7"
         },        
 
         "securityGroupIds" : {
             "Description" : "Security Groups",
             "Type" : "String", 
-            "Default" : "sg-7a76801f"
+            "Default" : "sg-2520e740,sg-60e52b05"
         },
 
 
         "VolumeSize" : {
             "Description" : "Volume size for each EBS volume",
             "Type" : "Number",
-            "Default" : "10"
+            "Default" : "100"
         },
 
         "ReplicaSetName" : {
@@ -149,7 +149,7 @@
                 "InstanceType" : { "Ref" : "InstanceType" },
                 "ImageId" : { "Fn::FindInMap" : [ "RegionImageZone", { "Ref" : "AWS::Region" }, 
                     { "Fn::FindInMap" : [ "InstanceTypeArch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
-                "SecurityGroupIds" : [ { "Ref" : "securityGroupIds" } ],
+                 "SecurityGroupIds" : [ "sg-2520e740", "sg-60e52b05"],
                 "KeyName" : { "Ref" : "KeyName" },
                 "SubnetId" : { "Ref" : "subnetId" },
                 "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
@@ -163,7 +163,7 @@
  
                     "## Initialize CloudFormation bits\n",
                     "/opt/aws/bin/cfn-init -v -s ", { "Ref" : "AWS::StackName" }, " -r MongoInstanceP1",
-                    "   --role ",  "readonly" ,
+                    "   --role ",   { "Ref" : "instanceRole" } ,
                     "   --region ", { "Ref" : "AWS::Region" }, " > /tmp/cfn-init.log \n",
 
                     "## Waiting for EBS mounts to become available\n",
