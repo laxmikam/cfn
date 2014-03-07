@@ -1,0 +1,142 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "AWS CloudFormation Sample Template for nodejs nodes",
+
+  "Parameters" : {
+
+    "Subnets" : {
+      "Type" : "CommaDelimitedList",
+      "Description" : "The list of SubnetIds in your Virtual Private Cloud (VPC)",
+      "Default" : "subnet-a8b555c7"
+    },
+
+    "KeyName" : {
+            "Description" : "Name of an existing EC2 KeyPair to enable SSH access",
+            "Type" : "String" ,
+            "Default": "oregon"
+        },
+
+    "securityGroupIds" : {
+            "Description" : "Security Groups",
+            "Type" : "String", 
+            "Default" : "sg-2520e740,sg-60e52b05"
+        },
+
+    "AZs" : {
+      "Type" : "CommaDelimitedList",
+      "Description" : "The list of AvailabilityZones for your Virtual Private Cloud (VPC)",
+      "Default" : "us-west-2b"
+    },
+
+    "InstanceType" : {
+      "Description" : "WebServer EC2 instance type",
+      "Type" : "String",
+      "Default" : "m1.small",
+      "AllowedValues" : [ "t1.micro","m1.small","m1.medium","m1.large","m1.xlarge","m2.xlarge","m2.2xlarge","m2.4xlarge","m3.xlarge","m3.2xlarge","c1.medium","c1.xlarge","cc1.4xlarge","cc2.8xlarge","cg1.4xlarge"],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "InstanceCount" : {
+      "Description" : "Number of EC2 instances to launch",
+      "Type" : "Number",
+      "Default" : "2"
+    },
+
+    "WebServerPort" : {
+      "Description" : "TCP/IP port of the web server",
+      "Type" : "String",
+      "Default" : "8888"
+    }
+  },
+
+  "Mappings" : {
+    "AWSInstanceType2Arch" : {
+      "t1.micro"    : { "Arch" : "64" },
+      "m1.small"    : { "Arch" : "64" },
+      "m1.medium"   : { "Arch" : "64" },
+      "m1.large"    : { "Arch" : "64" },
+      "m1.xlarge"   : { "Arch" : "64" },
+      "m2.xlarge"   : { "Arch" : "64" },
+      "m2.2xlarge"  : { "Arch" : "64" },
+      "m2.4xlarge"  : { "Arch" : "64" },
+      "m3.xlarge"   : { "Arch" : "64" },
+      "m3.2xlarge"  : { "Arch" : "64" },
+      "c1.medium"   : { "Arch" : "64" },
+      "c1.xlarge"   : { "Arch" : "64" }
+    },
+
+    "AWSRegionArch2AMI" : {
+      "us-east-1"      : { "32" : "ami-aba768c2", "64" : "ami-81a768e8" },
+      "us-west-1"      : { "32" : "ami-458fd300", "64" : "ami-b18ed2f4" },
+      "us-west-2"      : { "32" : "ami-fcff72cc", "64" : "ami-feff72ce" },
+      "eu-west-1"      : { "32" : "ami-018bb975", "64" : "ami-998bb9ed" },
+      "sa-east-1"      : { "32" : "ami-a039e6bd", "64" : "ami-a239e6bf" },
+      "ap-southeast-1" : { "32" : "ami-425a2010", "64" : "ami-5e5a200c" },
+      "ap-southeast-2" : { "32" : "ami-f98512c3", "64" : "ami-43851279" },
+      "ap-northeast-1" : { "32" : "ami-7871c579", "64" : "ami-7671c577" }
+    }
+  },
+
+  "Resources" : {
+
+    "NodeServerGroup" : {
+      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+      "Properties" : {
+        "AvailabilityZones" : { "Ref" : "AZs" },
+        "VPCZoneIdentifier" : { "Ref" : "Subnets" },
+        "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+        "MinSize" : "2",
+        "MaxSize" : "10",
+        "DesiredCapacity" : { "Ref" : "InstanceCount" },
+        "Tags": [ { "Key": "Name" , "Value": "diao-innovation-catalog-db1","PropagateAtLaunch" : "true"  } ,
+                          { "Key": "Environment" , "Value": "Test" , "PropagateAtLaunch" : "true" } ,
+                          { "Key": "Costcenter" , "Value": "10004416", "PropagateAtLaunch" : "true" } ,
+                          { "Key": "Application" , "Value": "diaoic", "PropagateAtLaunch" : "true" } ,
+                          { "Key": "Division" , "Value": "Digital Innovation and Outreach", "PropagateAtLaunch" : "true" } ] ,
+        "LoadBalancerNames" : [ { "Ref" : "ElasticLoadBalancer" } ]
+      }
+    },
+
+    "LaunchConfig" : {
+      "Type" : "AWS::AutoScaling::LaunchConfiguration",
+      "Properties" : {
+        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+                                          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" },
+                                          "Arch" ] } ] },
+        "SecurityGroups" : [ "sg-2520e740", "sg-60e52b05"  ],
+        "KeyName" : { "Ref" : "KeyName" } ,
+        "InstanceType" : { "Ref" : "InstanceType" },
+        "UserData" : { "Fn::Base64" : { "Ref" : "WebServerPort" }}
+      }
+    },
+
+    "ElasticLoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "SecurityGroups" : [ "sg-2520e740", "sg-60e52b05"  ],
+        "Subnets" : { "Ref" : "Subnets" },
+        "Scheme" : "internal",
+        "Listeners" : [ {
+          "LoadBalancerPort" : "80",
+          "InstancePort" : { "Ref" : "WebServerPort" },
+          "Protocol" : "HTTP"
+        } ],
+        "HealthCheck" : {
+          "Target" : { "Fn::Join" : [ "", ["HTTP:", { "Ref" : "WebServerPort" }, "/"]]},
+          "HealthyThreshold" : "3",
+          "UnhealthyThreshold" : "5",
+          "Interval" : "30",
+          "Timeout" : "25"
+        }
+      }
+    }
+  },
+
+  "Outputs" : {
+    "URL" : {
+      "Description" : "URL of the website",
+      "Value" :  { "Fn::Join" : [ "", [ "http://", { "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ]}]]}
+    }
+  }
+}
